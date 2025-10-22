@@ -3,99 +3,328 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Interactive Study Timetable & Progress Tracker</title>
+  <title>Enhanced Study Timetable & Progress Tracker</title>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <style>
+    :root {
+      --bg-color: #f5f7fb;
+      --text-color: #333;
+      --card-bg: #fff;
+      --primary: #4a6cf7;
+      --secondary: #6c757d;
+      --success: #28a745;
+      --danger: #dc3545;
+      --warning: #ffc107;
+      --border-color: #dee2e6;
+      --shadow: 0 2px 10px rgba(0,0,0,0.1);
+    }
+
+    .dark-mode {
+      --bg-color: #121212;
+      --text-color: #e0e0e0;
+      --card-bg: #1e1e1e;
+      --primary: #5d78ff;
+      --secondary: #8e99a4;
+      --border-color: #333;
+      --shadow: 0 2px 10px rgba(0,0,0,0.3);
+    }
+
+    * {
+      transition: background-color 0.3s, color 0.3s;
+    }
+
     body {
-      font-family: 'Poppins', sans-serif;
-      background: #f5f7fb;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: var(--bg-color);
       margin: 0;
       padding: 0;
-      color: #333;
+      color: var(--text-color);
+      line-height: 1.6;
     }
+
     header {
       text-align: center;
-      background: #4a6cf7;
+      background: var(--primary);
       color: #fff;
-      padding: 1rem;
+      padding: 1.5rem;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+      position: relative;
     }
+
+    .theme-toggle {
+      position: absolute;
+      right: 1rem;
+      top: 50%;
+      transform: translateY(-50%);
+      background: rgba(255,255,255,0.2);
+      border: none;
+      border-radius: 50%;
+      width: 40px;
+      height: 40px;
+      cursor: pointer;
+      color: white;
+      font-size: 1.2rem;
+    }
+
     main {
       display: flex;
       flex-direction: column;
       align-items: center;
+      margin: 1.5rem;
+    }
+
+    .controls, .add-task, .reminder-section {
+      background: var(--card-bg);
+      border-radius: 12px;
+      box-shadow: var(--shadow);
+      padding: 1.5rem;
       margin: 1rem;
-    }
-    .controls, .add-task {
-      background: #fff;
-      border-radius: 10px;
-      box-shadow: 0 2px 5px rgba(0,0,0,0.1);
-      padding: 1rem;
-      margin: 1rem;
-      width: 90%;
-      max-width: 800px;
-    }
-    .controls input, .add-task input, .add-task select, button {
-      padding: 0.5rem;
-      margin: 0.3rem;
-      border-radius: 5px;
-      border: 1px solid #ccc;
-    }
-    table {
       width: 90%;
       max-width: 900px;
-      border-collapse: collapse;
-      margin: 1rem auto;
-      background: #fff;
-      border-radius: 10px;
-      overflow: hidden;
     }
+
+    .controls h3, .add-task h3, .reminder-section h3 {
+      margin-top: 0;
+      color: var(--primary);
+      border-bottom: 1px solid var(--border-color);
+      padding-bottom: 0.5rem;
+    }
+
+    .form-group {
+      margin-bottom: 1rem;
+    }
+
+    .form-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 1rem;
+      margin-bottom: 1rem;
+    }
+
+    .form-row label {
+      display: flex;
+      flex-direction: column;
+      flex: 1;
+      min-width: 120px;
+    }
+
+    .form-row input, .form-row select {
+      margin-top: 0.3rem;
+    }
+
+    .controls input, .add-task input, .add-task select, .reminder-section input, button {
+      padding: 0.7rem;
+      border-radius: 8px;
+      border: 1px solid var(--border-color);
+      background: var(--card-bg);
+      color: var(--text-color);
+      font-size: 0.95rem;
+    }
+
+    button {
+      background: var(--primary);
+      color: white;
+      border: none;
+      cursor: pointer;
+      font-weight: 500;
+      transition: all 0.2s;
+    }
+
+    button:hover {
+      opacity: 0.9;
+      transform: translateY(-2px);
+    }
+
+    button.secondary {
+      background: var(--secondary);
+    }
+
+    button.success {
+      background: var(--success);
+    }
+
+    button.danger {
+      background: var(--danger);
+    }
+
+    table {
+      width: 95%;
+      max-width: 1000px;
+      border-collapse: collapse;
+      margin: 1.5rem auto;
+      background: var(--card-bg);
+      border-radius: 12px;
+      overflow: hidden;
+      box-shadow: var(--shadow);
+    }
+
     th, td {
-      border: 1px solid #ddd;
-      padding: 0.5rem;
+      border: 1px solid var(--border-color);
+      padding: 0.8rem;
       text-align: center;
     }
+
     th {
-      background: #4a6cf7;
+      background: var(--primary);
       color: white;
+      font-weight: 600;
     }
+
+    .task-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0.5rem;
+      margin: 0.3rem 0;
+      border-radius: 6px;
+      background: rgba(74, 108, 247, 0.1);
+      border-left: 3px solid var(--primary);
+    }
+
+    .task-item.done {
+      background: rgba(40, 167, 69, 0.1);
+      border-left-color: var(--success);
+    }
+
+    .task-item.long-term {
+      background: rgba(255, 193, 7, 0.1);
+      border-left-color: var(--warning);
+    }
+
+    .task-actions {
+      display: flex;
+      gap: 0.3rem;
+    }
+
+    .task-actions button {
+      padding: 0.3rem 0.5rem;
+      font-size: 0.8rem;
+    }
+
     .done {
       text-decoration: line-through;
-      color: green;
+      color: var(--success);
     }
+
     canvas {
-      background: #fff;
-      border-radius: 10px;
-      box-shadow: 0 2px 5px rgba(0,0,0,0.1);
-      margin: 1rem;
+      background: var(--card-bg);
+      border-radius: 12px;
+      box-shadow: var(--shadow);
+      margin: 1.5rem;
+      padding: 1rem;
+    }
+
+    .notification {
+      position: fixed;
+      bottom: 20px;
+      right: 20px;
+      padding: 1rem 1.5rem;
+      background: var(--primary);
+      color: white;
+      border-radius: 8px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+      z-index: 1000;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      transform: translateX(150%);
+      transition: transform 0.3s ease;
+    }
+
+    .notification.show {
+      transform: translateX(0);
+    }
+
+    .notification-close {
+      background: none;
+      border: none;
+      color: white;
+      font-size: 1.2rem;
+      cursor: pointer;
+      padding: 0;
+      width: 24px;
+      height: 24px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .empty-cell {
+      color: var(--secondary);
+      font-style: italic;
+      padding: 1rem;
+    }
+
+    @media (max-width: 768px) {
+      .form-row {
+        flex-direction: column;
+      }
+      
+      .form-row label {
+        min-width: auto;
+      }
+      
+      table {
+        font-size: 0.85rem;
+      }
+      
+      th, td {
+        padding: 0.5rem;
+      }
     }
   </style>
 </head>
 <body>
   <header>
-    <h1>Interactive Study Timetable & Progress Tracker</h1>
+    <h1>Enhanced Study Timetable & Progress Tracker</h1>
+    <button class="theme-toggle" onclick="toggleDarkMode()">🌙</button>
   </header>
   <main>
     <section class="controls">
       <h3>Set Time Range</h3>
-      <label>Start Time: <input type="time" id="startTime" value="03:00"/></label>
-      <label>End Time: <input type="time" id="endTime" value="07:00"/></label>
-      <button onclick="generateTimetable()">Generate Timetable</button>
-      <button onclick="loadPythonSchedule()">Load Python Schedule</button>
+      <div class="form-row">
+        <label>Start Time: <input type="time" id="startTime" value="06:00"/></label>
+        <label>End Time: <input type="time" id="endTime" value="22:00"/></label>
+        <button onclick="generateTimetable()">Generate Timetable</button>
+        <button onclick="loadPythonSchedule()">Load Python Schedule</button>
+        <button class="secondary" onclick="clearTimetable()">Clear Timetable</button>
+      </div>
     </section>
 
     <section class="add-task">
       <h3>Add a Task</h3>
-      <input type="text" id="taskName" placeholder="Task name..."/>
-      <select id="daySelect">
-        <option>Monday</option>
-        <option>Tuesday</option>
-        <option>Wednesday</option>
-        <option>Thursday</option>
-        <option>Friday</option>
-        <option>Saturday</option>
-        <option>Sunday</option>
-      </select>
-      <button onclick="addTask()">Add Task</button>
+      <div class="form-row">
+        <label>Task Name: <input type="text" id="taskName" placeholder="Enter task name..."/></label>
+        <label>Day: 
+          <select id="daySelect">
+            <option>Monday</option>
+            <option>Tuesday</option>
+            <option>Wednesday</option>
+            <option>Thursday</option>
+            <option>Friday</option>
+            <option>Saturday</option>
+            <option>Sunday</option>
+          </select>
+        </label>
+        <label>Time: <input type="time" id="taskTime"/></label>
+        <label>Duration (hours): <input type="number" id="taskDuration" min="0.5" max="8" step="0.5" value="1"/></label>
+        <label>Task Type:
+          <select id="taskType">
+            <option value="short-term">Short Term</option>
+            <option value="long-term">Long Term</option>
+          </select>
+        </label>
+        <button onclick="addTask()">Add Task</button>
+      </div>
+    </section>
+
+    <section class="reminder-section">
+      <h3>Set Reminder</h3>
+      <div class="form-row">
+        <label>Reminder Time: <input type="datetime-local" id="reminderTime"/></label>
+        <label>Message: <input type="text" id="reminderMessage" placeholder="Reminder message..."/></label>
+        <button class="success" onclick="setReminder()">Set Reminder</button>
+      </div>
     </section>
 
     <table id="timetable"></table>
@@ -104,116 +333,536 @@
     <canvas id="pieChart" width="600" height="300"></canvas>
   </main>
 
+  <div id="notification" class="notification">
+    <span id="notificationMessage"></span>
+    <button class="notification-close" onclick="hideNotification()">×</button>
+  </div>
+
   <script>
     let timetableData = {};
     let completedLog = [];
+    let reminders = [];
+    let lineChart, pieChart;
 
     const days = ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'];
+
+    // Initialize the application
+    function init() {
+      loadData();
+      generateTimetable();
+      updateCharts();
+      checkReminders();
+      setInterval(checkReminders, 60000); // Check reminders every minute
+      
+      // Check for dark mode preference
+      if (localStorage.getItem('darkMode') === 'true') {
+        document.body.classList.add('dark-mode');
+      }
+    }
 
     function generateTimetable() {
       const start = document.getElementById('startTime').value;
       const end = document.getElementById('endTime').value;
       const table = document.getElementById('timetable');
+      
+      // Clear existing content but preserve data
       table.innerHTML = '';
+      
+      // Create header row
       const headerRow = document.createElement('tr');
-      headerRow.innerHTML = '<th>Time</th>' + days.map(d=>`<th>${d}</th>`).join('');
+      headerRow.innerHTML = '<th>Time</th>' + days.map(d => `<th>${d}</th>`).join('');
       table.appendChild(headerRow);
       
-      timetableData = {};
+      // Generate time slots
       const startHour = parseInt(start.split(':')[0]);
       const endHour = parseInt(end.split(':')[0]);
-      for (let h=startHour; h<endHour; h++) {
-        const row = document.createElement('tr');
-        const timeLabel = `${String(h).padStart(2,'0')}:00 - ${String(h+1).padStart(2,'0')}:00`;
-        row.innerHTML = `<td>${timeLabel}</td>` + days.map(d=>`<td id="${d}-${h}"></td>`).join('');
-        table.appendChild(row);
+      
+      // Create time slots
+      for (let h = startHour; h < endHour; h++) {
+        for (let m = 0; m < 60; m += 30) { // 30-minute intervals
+          const row = document.createElement('tr');
+          const timeLabel = `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
+          const nextTime = m === 30 ? `${String(h+1).padStart(2, '0')}:00` : `${String(h).padStart(2, '0')}:30`;
+          row.innerHTML = `<td>${timeLabel} - ${nextTime}</td>` + 
+            days.map(d => `<td id="${d}-${timeLabel.replace(':', '')}"></td>`).join('');
+          table.appendChild(row);
+        }
       }
-    }
-
-    function addTask() {
-      const task = document.getElementById('taskName').value.trim();
-      const day = document.getElementById('daySelect').value;
-      if (!task) return alert('Enter a task name');
-      const cells = document.querySelectorAll(`[id^='${day}-']`);
-      if (cells.length === 0) return alert('Generate timetable first');
-      const targetCell = cells[0]; // for simplicity place in first available slot
-      const taskEl = document.createElement('div');
-      taskEl.innerHTML = `<input type='checkbox' onchange='markDone(this,\'${day}\',\'${task}\')'/> ${task}`;
-      targetCell.appendChild(taskEl);
-      timetableData[day] = timetableData[day] || [];
-      timetableData[day].push(task);
+      
+      // Populate with existing data
+      populateTimetable();
       saveData();
     }
 
-    function markDone(checkbox, day, task) {
-      if (checkbox.checked) {
-        checkbox.parentElement.classList.add('done');
-        const date = new Date().toISOString().split('T')[0];
-        completedLog.push({date, task});
-      } else {
-        checkbox.parentElement.classList.remove('done');
+    function populateTimetable() {
+      // Clear all cells first
+      document.querySelectorAll('#timetable td').forEach(cell => {
+        if (cell.id !== '') {
+          cell.innerHTML = '';
+        }
+      });
+      
+      // Add tasks to timetable
+      for (const day in timetableData) {
+        if (timetableData.hasOwnProperty(day)) {
+          timetableData[day].forEach(task => {
+            const cellId = `${day}-${task.time.replace(':', '')}`;
+            const cell = document.getElementById(cellId);
+            if (cell) {
+              addTaskToCell(cell, task);
+            }
+          });
+        }
       }
+    }
+
+    function addTaskToCell(cell, task) {
+      const taskEl = document.createElement('div');
+      taskEl.className = `task-item ${task.done ? 'done' : ''} ${task.type === 'long-term' ? 'long-term' : ''}`;
+      
+      taskEl.innerHTML = `
+        <div>
+          <input type="checkbox" ${task.done ? 'checked' : ''} onchange="markDone(this, '${task.id}')"/>
+          <span>${task.name}</span>
+          <small>(${task.duration}h)</small>
+        </div>
+        <div class="task-actions">
+          <button class="secondary" onclick="editTask('${task.id}')">✏️</button>
+          <button class="danger" onclick="deleteTask('${task.id}')">🗑️</button>
+        </div>
+      `;
+      
+      cell.appendChild(taskEl);
+    }
+
+    function addTask() {
+      const taskName = document.getElementById('taskName').value.trim();
+      const day = document.getElementById('daySelect').value;
+      const time = document.getElementById('taskTime').value;
+      const duration = parseFloat(document.getElementById('taskDuration').value);
+      const type = document.getElementById('taskType').value;
+      
+      if (!taskName) {
+        showNotification('Please enter a task name', 'warning');
+        return;
+      }
+      
+      if (!time) {
+        showNotification('Please select a time for the task', 'warning');
+        return;
+      }
+      
+      const task = {
+        id: generateId(),
+        name: taskName,
+        day: day,
+        time: time,
+        duration: duration,
+        type: type,
+        done: false,
+        createdAt: new Date().toISOString()
+      };
+      
+      // Initialize day array if it doesn't exist
+      if (!timetableData[day]) {
+        timetableData[day] = [];
+      }
+      
+      // Add task to data
+      timetableData[day].push(task);
+      
+      // Sort tasks by time
+      timetableData[day].sort((a, b) => a.time.localeCompare(b.time));
+      
+      // Update the timetable
+      populateTimetable();
+      saveData();
+      
+      // Clear form
+      document.getElementById('taskName').value = '';
+      document.getElementById('taskTime').value = '';
+      
+      showNotification('Task added successfully!', 'success');
+    }
+
+    function markDone(checkbox, taskId) {
+      // Find the task in timetableData
+      for (const day in timetableData) {
+        if (timetableData.hasOwnProperty(day)) {
+          const taskIndex = timetableData[day].findIndex(task => task.id === taskId);
+          if (taskIndex !== -1) {
+            timetableData[day][taskIndex].done = checkbox.checked;
+            
+            if (checkbox.checked) {
+              const date = new Date().toISOString().split('T')[0];
+              completedLog.push({
+                date,
+                task: timetableData[day][taskIndex].name,
+                id: taskId
+              });
+              
+              // If it's a short-term task, schedule for removal tomorrow
+              if (timetableData[day][taskIndex].type === 'short-term') {
+                scheduleTaskRemoval(taskId);
+              }
+            } else {
+              // Remove from completed log if unchecked
+              const logIndex = completedLog.findIndex(log => log.id === taskId);
+              if (logIndex !== -1) {
+                completedLog.splice(logIndex, 1);
+              }
+            }
+            
+            break;
+          }
+        }
+      }
+      
+      // Update the display
+      populateTimetable();
       saveData();
       updateCharts();
     }
 
+    function editTask(taskId) {
+      // Find the task
+      for (const day in timetableData) {
+        if (timetableData.hasOwnProperty(day)) {
+          const taskIndex = timetableData[day].findIndex(task => task.id === taskId);
+          if (taskIndex !== -1) {
+            const task = timetableData[day][taskIndex];
+            
+            // Populate the form with task details
+            document.getElementById('taskName').value = task.name;
+            document.getElementById('daySelect').value = task.day;
+            document.getElementById('taskTime').value = task.time;
+            document.getElementById('taskDuration').value = task.duration;
+            document.getElementById('taskType').value = task.type;
+            
+            // Remove the task
+            timetableData[day].splice(taskIndex, 1);
+            
+            // Update the timetable
+            populateTimetable();
+            saveData();
+            
+            showNotification('Task loaded for editing. Update details and click "Add Task".', 'info');
+            return;
+          }
+        }
+      }
+    }
+
+    function deleteTask(taskId) {
+      if (confirm('Are you sure you want to delete this task?')) {
+        // Find and remove the task
+        for (const day in timetableData) {
+          if (timetableData.hasOwnProperty(day)) {
+            const taskIndex = timetableData[day].findIndex(task => task.id === taskId);
+            if (taskIndex !== -1) {
+              timetableData[day].splice(taskIndex, 1);
+              break;
+            }
+          }
+        }
+        
+        // Remove from completed log
+        const logIndex = completedLog.findIndex(log => log.id === taskId);
+        if (logIndex !== -1) {
+          completedLog.splice(logIndex, 1);
+        }
+        
+        // Update the timetable
+        populateTimetable();
+        saveData();
+        updateCharts();
+        
+        showNotification('Task deleted successfully!', 'success');
+      }
+    }
+
     function loadPythonSchedule() {
-      const exampleTasks = ['Python Basics','Control Flow','Data Structures','OOP in Python','Modules','AI Intro','Machine Learning'];
-      generateTimetable();
+      const exampleTasks = [
+        { name: 'Python Basics', duration: 1.5 },
+        { name: 'Control Flow', duration: 2 },
+        { name: 'Data Structures', duration: 2.5 },
+        { name: 'OOP in Python', duration: 3 },
+        { name: 'Modules and Packages', duration: 1.5 },
+        { name: 'AI Introduction', duration: 2 },
+        { name: 'Machine Learning', duration: 2.5 }
+      ];
+      
+      // Clear existing data
+      timetableData = {};
+      
+      // Generate timetable if not already generated
+      if (document.getElementById('timetable').rows.length <= 1) {
+        generateTimetable();
+      }
+      
+      // Add example tasks
       days.forEach(day => {
-        const cells = document.querySelectorAll(`[id^='${day}-']`);
-        if (cells.length > 0) {
-          const task = exampleTasks[Math.floor(Math.random()*exampleTasks.length)];
-          const taskEl = document.createElement('div');
-          taskEl.innerHTML = `<input type='checkbox' onchange='markDone(this,\'${day}\',\'${task}\')'/> ${task}`;
-          cells[0].appendChild(taskEl);
+        timetableData[day] = [];
+        
+        // Add 2-3 tasks per day
+        const taskCount = Math.floor(Math.random() * 2) + 2;
+        const usedTimes = new Set();
+        
+        for (let i = 0; i < taskCount; i++) {
+          const task = {...exampleTasks[Math.floor(Math.random() * exampleTasks.length)]};
+          task.id = generateId();
+          task.day = day;
+          task.type = Math.random() > 0.5 ? 'long-term' : 'short-term';
+          task.done = false;
+          task.createdAt = new Date().toISOString();
+          
+          // Generate a unique time
+          let time;
+          do {
+            const hour = Math.floor(Math.random() * 12) + 8; // 8 AM to 7 PM
+            const minute = Math.random() > 0.5 ? '00' : '30';
+            time = `${String(hour).padStart(2, '0')}:${minute}`;
+          } while (usedTimes.has(time));
+          
+          usedTimes.add(time);
+          task.time = time;
+          
+          timetableData[day].push(task);
+        }
+        
+        // Sort tasks by time
+        timetableData[day].sort((a, b) => a.time.localeCompare(b.time));
+      });
+      
+      // Update the timetable
+      populateTimetable();
+      saveData();
+      
+      showNotification('Python schedule loaded successfully!', 'success');
+    }
+
+    function clearTimetable() {
+      if (confirm('Are you sure you want to clear the entire timetable? This action cannot be undone.')) {
+        timetableData = {};
+        completedLog = [];
+        generateTimetable();
+        updateCharts();
+        showNotification('Timetable cleared successfully!', 'success');
+      }
+    }
+
+    function setReminder() {
+      const reminderTime = document.getElementById('reminderTime').value;
+      const message = document.getElementById('reminderMessage').value.trim();
+      
+      if (!reminderTime) {
+        showNotification('Please select a reminder time', 'warning');
+        return;
+      }
+      
+      if (!message) {
+        showNotification('Please enter a reminder message', 'warning');
+        return;
+      }
+      
+      const reminder = {
+        id: generateId(),
+        time: reminderTime,
+        message: message,
+        triggered: false
+      };
+      
+      reminders.push(reminder);
+      saveData();
+      
+      document.getElementById('reminderTime').value = '';
+      document.getElementById('reminderMessage').value = '';
+      
+      showNotification('Reminder set successfully!', 'success');
+    }
+
+    function checkReminders() {
+      const now = new Date();
+      const nowISO = now.toISOString().slice(0, 16); // Format: YYYY-MM-DDTHH:mm
+      
+      reminders.forEach(reminder => {
+        if (!reminder.triggered && reminder.time === nowISO) {
+          showNotification(`Reminder: ${reminder.message}`, 'info', 10000);
+          reminder.triggered = true;
+          saveData();
         }
       });
-      saveData();
+    }
+
+    function scheduleTaskRemoval(taskId) {
+      // Schedule task for removal at the start of the next day
+      const tomorrow = new Date();
+      tomorrow.setDate(tomorrow.getDate() + 1);
+      tomorrow.setHours(0, 0, 0, 0);
+      
+      const timeUntilTomorrow = tomorrow.getTime() - new Date().getTime();
+      
+      setTimeout(() => {
+        for (const day in timetableData) {
+          if (timetableData.hasOwnProperty(day)) {
+            const taskIndex = timetableData[day].findIndex(task => task.id === taskId);
+            if (taskIndex !== -1 && timetableData[day][taskIndex].type === 'short-term') {
+              timetableData[day].splice(taskIndex, 1);
+              populateTimetable();
+              saveData();
+              break;
+            }
+          }
+        }
+      }, timeUntilTomorrow);
+    }
+
+    function toggleDarkMode() {
+      document.body.classList.toggle('dark-mode');
+      localStorage.setItem('darkMode', document.body.classList.contains('dark-mode'));
+    }
+
+    function showNotification(message, type = 'info', duration = 5000) {
+      const notification = document.getElementById('notification');
+      const messageEl = document.getElementById('notificationMessage');
+      
+      messageEl.textContent = message;
+      notification.className = `notification show ${type}`;
+      
+      // Auto-hide after duration
+      setTimeout(() => {
+        hideNotification();
+      }, duration);
+    }
+
+    function hideNotification() {
+      document.getElementById('notification').classList.remove('show');
+    }
+
+    function generateId() {
+      return Date.now().toString(36) + Math.random().toString(36).substr(2);
     }
 
     function saveData() {
       localStorage.setItem('timetableData', JSON.stringify(timetableData));
       localStorage.setItem('completedLog', JSON.stringify(completedLog));
+      localStorage.setItem('reminders', JSON.stringify(reminders));
     }
 
     function loadData() {
-      const tData = JSON.parse(localStorage.getItem('timetableData')) || {};
-      const cLog = JSON.parse(localStorage.getItem('completedLog')) || [];
-      timetableData = tData;
-      completedLog = cLog;
+      timetableData = JSON.parse(localStorage.getItem('timetableData')) || {};
+      completedLog = JSON.parse(localStorage.getItem('completedLog')) || [];
+      reminders = JSON.parse(localStorage.getItem('reminders')) || [];
     }
 
     function updateCharts() {
       const dailyCount = {};
       completedLog.forEach(entry => {
-        dailyCount[entry.date] = (dailyCount[entry.date]||0) + 1;
+        dailyCount[entry.date] = (dailyCount[entry.date] || 0) + 1;
       });
-      const dates = Object.keys(dailyCount);
-      const counts = Object.values(dailyCount);
+      
+      const dates = Object.keys(dailyCount).sort();
+      const counts = dates.map(date => dailyCount[date]);
 
       const lineCtx = document.getElementById('lineChart').getContext('2d');
-      new Chart(lineCtx, {
+      
+      // Destroy existing chart if it exists
+      if (lineChart) {
+        lineChart.destroy();
+      }
+      
+      lineChart = new Chart(lineCtx, {
         type: 'line',
-        data: { labels: dates, datasets: [{ label: 'Tasks Completed', data: counts }] },
-        options: { responsive: true }
+        data: {
+          labels: dates,
+          datasets: [{
+            label: 'Tasks Completed',
+            data: counts,
+            borderColor: '#4a6cf7',
+            backgroundColor: 'rgba(74, 108, 247, 0.1)',
+            tension: 0.3,
+            fill: true
+          }]
+        },
+        options: {
+          responsive: true,
+          plugins: {
+            title: {
+              display: true,
+              text: 'Daily Task Completion Trend',
+              color: getComputedStyle(document.body).getPropertyValue('--text-color')
+            },
+            legend: {
+              labels: {
+                color: getComputedStyle(document.body).getPropertyValue('--text-color')
+              }
+            }
+          },
+          scales: {
+            x: {
+              ticks: {
+                color: getComputedStyle(document.body).getPropertyValue('--text-color')
+              },
+              grid: {
+                color: getComputedStyle(document.body).getPropertyValue('--border-color')
+              }
+            },
+            y: {
+              ticks: {
+                color: getComputedStyle(document.body).getPropertyValue('--text-color')
+              },
+              grid: {
+                color: getComputedStyle(document.body).getPropertyValue('--border-color')
+              }
+            }
+          }
+        }
       });
 
       const taskFreq = {};
-      completedLog.forEach(e => { taskFreq[e.task] = (taskFreq[e.task]||0)+1; });
+      completedLog.forEach(e => {
+        taskFreq[e.task] = (taskFreq[e.task] || 0) + 1;
+      });
+      
       const pCtx = document.getElementById('pieChart').getContext('2d');
-      new Chart(pCtx, {
+      
+      // Destroy existing chart if it exists
+      if (pieChart) {
+        pieChart.destroy();
+      }
+      
+      pieChart = new Chart(pCtx, {
         type: 'pie',
-        data: { labels: Object.keys(taskFreq), datasets: [{ data: Object.values(taskFreq) }] },
-        options: { responsive: true }
+        data: {
+          labels: Object.keys(taskFreq),
+          datasets: [{
+            data: Object.values(taskFreq),
+            backgroundColor: [
+              '#4a6cf7', '#28a745', '#dc3545', '#ffc107', '#6f42c1',
+              '#e83e8c', '#fd7e14', '#20c997', '#6610f2', '#6c757d'
+            ]
+          }]
+        },
+        options: {
+          responsive: true,
+          plugins: {
+            title: {
+              display: true,
+              text: 'Task Completion Distribution',
+              color: getComputedStyle(document.body).getPropertyValue('--text-color')
+            },
+            legend: {
+              labels: {
+                color: getComputedStyle(document.body).getPropertyValue('--text-color')
+              }
+            }
+          }
+        }
       });
     }
 
-    window.onload = () => {
-      loadData();
-      generateTimetable();
-      updateCharts();
-    };
+    // Initialize the application when the page loads
+    window.onload = init;
   </script>
 </body>
 </html>

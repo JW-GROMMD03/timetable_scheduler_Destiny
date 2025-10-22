@@ -306,7 +306,7 @@
             <option>Sunday</option>
           </select>
         </label>
-        <label>Time: <input type="time" id="taskTime"/></label>
+        <label>Start Time: <input type="time" id="taskTime"/></label>
         <label>Duration (hours): <input type="number" id="taskDuration" min="0.5" max="8" step="0.5" value="1"/></label>
         <label>Task Type:
           <select id="taskType">
@@ -375,18 +375,39 @@
       
       // Generate time slots
       const startHour = parseInt(start.split(':')[0]);
+      const startMinute = parseInt(start.split(':')[1]);
       const endHour = parseInt(end.split(':')[0]);
+      const endMinute = parseInt(end.split(':')[1]);
       
-      // Create time slots
-      for (let h = startHour; h < endHour; h++) {
-        for (let m = 0; m < 60; m += 30) { // 30-minute intervals
-          const row = document.createElement('tr');
-          const timeLabel = `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
-          const nextTime = m === 30 ? `${String(h+1).padStart(2, '0')}:00` : `${String(h).padStart(2, '0')}:30`;
-          row.innerHTML = `<td>${timeLabel} - ${nextTime}</td>` + 
-            days.map(d => `<td id="${d}-${timeLabel.replace(':', '')}"></td>`).join('');
-          table.appendChild(row);
+      // Create time slots with 30-minute intervals
+      let currentHour = startHour;
+      let currentMinute = startMinute;
+      
+      while (currentHour < endHour || (currentHour === endHour && currentMinute < endMinute)) {
+        const row = document.createElement('tr');
+        
+        // Format current time
+        const currentTime = `${String(currentHour).padStart(2, '0')}:${String(currentMinute).padStart(2, '0')}`;
+        
+        // Calculate next time
+        let nextHour = currentHour;
+        let nextMinute = currentMinute + 30;
+        
+        if (nextMinute >= 60) {
+          nextHour += 1;
+          nextMinute -= 60;
         }
+        
+        const nextTime = `${String(nextHour).padStart(2, '0')}:${String(nextMinute).padStart(2, '0')}`;
+        
+        // Create time label
+        row.innerHTML = `<td>${currentTime} - ${nextTime}</td>` + 
+          days.map(d => `<td id="${d}-${currentTime.replace(':', '')}"></td>`).join('');
+        table.appendChild(row);
+        
+        // Move to next time slot
+        currentHour = nextHour;
+        currentMinute = nextMinute;
       }
       
       // Populate with existing data
@@ -406,17 +427,89 @@
       for (const day in timetableData) {
         if (timetableData.hasOwnProperty(day)) {
           timetableData[day].forEach(task => {
-            const cellId = `${day}-${task.time.replace(':', '')}`;
-            const cell = document.getElementById(cellId);
-            if (cell) {
-              addTaskToCell(cell, task);
-            }
+            placeTaskInTimetable(task);
           });
         }
       }
     }
 
-    function addTaskToCell(cell, task) {
+    function placeTaskInTimetable(task) {
+      const startTime = task.time;
+      const duration = task.duration;
+      
+      // Calculate end time
+      const [startHour, startMinute] = startTime.split(':').map(Number);
+      let endHour = startHour + Math.floor(duration);
+      let endMinute = startMinute + (duration % 1) * 60;
+      
+      if (endMinute >= 60) {
+        endHour += 1;
+        endMinute -= 60;
+      }
+      
+      const endTime = `${String(endHour).padStart(2, '0')}:${String(endMinute).padStart(2, '0')}`;
+      
+      // Find all time slots between start and end time
+      const timeSlots = document.querySelectorAll('#timetable td:first-child');
+      let startSlot = null;
+      let endSlot = null;
+      
+      timeSlots.forEach(slot => {
+        const slotTimeRange = slot.textContent.split(' - ');
+        const slotStart = slotTimeRange[0];
+        const slotEnd = slotTimeRange[1];
+        
+        // Check if this is the starting slot
+        if (slotStart === startTime) {
+          startSlot = slot.parentElement;
+        }
+        
+        // Check if this is the ending slot
+        if (slotEnd === endTime) {
+          endSlot = slot.parentElement;
+        }
+      });
+      
+      // If we found both start and end slots, place the task
+      if (startSlot && endSlot) {
+        const startRowIndex = Array.from(startSlot.parentElement.children).indexOf(startSlot);
+        const endRowIndex = Array.from(endSlot.parentElement.children).indexOf(endSlot);
+        const durationSlots = endRowIndex - startRowIndex;
+        
+        // Place task in the starting cell and span it across the duration
+        const dayCell = startSlot.querySelector(`td[id^="${task.day}-"]`);
+        if (dayCell) {
+          const taskEl = createTaskElement(task);
+          dayCell.appendChild(taskEl);
+          
+          // If the task spans multiple slots, add a rowspan attribute
+          if (durationSlots > 1) {
+            dayCell.rowSpan = durationSlots;
+            
+            // Clear the cells that are spanned
+            for (let i = 1; i < durationSlots; i++) {
+              const nextRow = startSlot.parentElement.children[startRowIndex + i];
+              if (nextRow) {
+                const nextDayCell = nextRow.querySelector(`td[id^="${task.day}-"]`);
+                if (nextDayCell) {
+                  nextDayCell.style.display = 'none';
+                }
+              }
+            }
+          }
+        }
+      } else {
+        // Fallback: place in the closest available slot
+        const cellId = `${task.day}-${startTime.replace(':', '')}`;
+        const cell = document.getElementById(cellId);
+        if (cell) {
+          const taskEl = createTaskElement(task);
+          cell.appendChild(taskEl);
+        }
+      }
+    }
+
+    function createTaskElement(task) {
       const taskEl = document.createElement('div');
       taskEl.className = `task-item ${task.done ? 'done' : ''} ${task.type === 'long-term' ? 'long-term' : ''}`;
       
@@ -432,7 +525,7 @@
         </div>
       `;
       
-      cell.appendChild(taskEl);
+      return taskEl;
     }
 
     function addTask() {
@@ -468,6 +561,21 @@
         timetableData[day] = [];
       }
       
+      // Check for time conflicts
+      const hasConflict = timetableData[day].some(existingTask => {
+        const existingStart = timeToMinutes(existingTask.time);
+        const existingEnd = existingStart + existingTask.duration * 60;
+        const newStart = timeToMinutes(time);
+        const newEnd = newStart + duration * 60;
+        
+        return (newStart < existingEnd && newEnd > existingStart);
+      });
+      
+      if (hasConflict) {
+        showNotification('Time conflict! There is already a task scheduled in this time slot.', 'warning');
+        return;
+      }
+      
       // Add task to data
       timetableData[day].push(task);
       
@@ -475,7 +583,7 @@
       timetableData[day].sort((a, b) => a.time.localeCompare(b.time));
       
       // Update the timetable
-      populateTimetable();
+      generateTimetable();
       saveData();
       
       // Clear form
@@ -483,6 +591,11 @@
       document.getElementById('taskTime').value = '';
       
       showNotification('Task added successfully!', 'success');
+    }
+
+    function timeToMinutes(timeStr) {
+      const [hours, minutes] = timeStr.split(':').map(Number);
+      return hours * 60 + minutes;
     }
 
     function markDone(checkbox, taskId) {
@@ -519,7 +632,7 @@
       }
       
       // Update the display
-      populateTimetable();
+      generateTimetable();
       saveData();
       updateCharts();
     }
@@ -543,7 +656,7 @@
             timetableData[day].splice(taskIndex, 1);
             
             // Update the timetable
-            populateTimetable();
+            generateTimetable();
             saveData();
             
             showNotification('Task loaded for editing. Update details and click "Add Task".', 'info');
@@ -573,7 +686,7 @@
         }
         
         // Update the timetable
-        populateTimetable();
+        generateTimetable();
         saveData();
         updateCharts();
         
@@ -635,7 +748,7 @@
       });
       
       // Update the timetable
-      populateTimetable();
+      generateTimetable();
       saveData();
       
       showNotification('Python schedule loaded successfully!', 'success');
@@ -708,7 +821,7 @@
             const taskIndex = timetableData[day].findIndex(task => task.id === taskId);
             if (taskIndex !== -1 && timetableData[day][taskIndex].type === 'short-term') {
               timetableData[day].splice(taskIndex, 1);
-              populateTimetable();
+              generateTimetable();
               saveData();
               break;
             }

@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Interactive Study Timetable & Progress Tracker</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    body {
+      font-family: 'Poppins', sans-serif;
+      background: #f5f7fb;
+      margin: 0;
+      padding: 0;
+      color: #333;
+    }
+    header {
+      text-align: center;
+      background: #4a6cf7;
+      color: #fff;
+      padding: 1rem;
+    }
+    main {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      margin: 1rem;
+    }
+    .controls, .add-task {
+      background: #fff;
+      border-radius: 10px;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+      padding: 1rem;
+      margin: 1rem;
+      width: 90%;
+      max-width: 800px;
+    }
+    .controls input, .add-task input, .add-task select, button {
+      padding: 0.5rem;
+      margin: 0.3rem;
+      border-radius: 5px;
+      border: 1px solid #ccc;
+    }
+    table {
+      width: 90%;
+      max-width: 900px;
+      border-collapse: collapse;
+      margin: 1rem auto;
+      background: #fff;
+      border-radius: 10px;
+      overflow: hidden;
+    }
+    th, td {
+      border: 1px solid #ddd;
+      padding: 0.5rem;
+      text-align: center;
+    }
+    th {
+      background: #4a6cf7;
+      color: white;
+    }
+    .done {
+      text-decoration: line-through;
+      color: green;
+    }
+    canvas {
+      background: #fff;
+      border-radius: 10px;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+      margin: 1rem;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Interactive Study Timetable & Progress Tracker</h1>
+  </header>
+  <main>
+    <section class="controls">
+      <h3>Set Time Range</h3>
+      <label>Start Time: <input type="time" id="startTime" value="03:00"/></label>
+      <label>End Time: <input type="time" id="endTime" value="07:00"/></label>
+      <button onclick="generateTimetable()">Generate Timetable</button>
+      <button onclick="loadPythonSchedule()">Load Python Schedule</button>
+    </section>
+
+    <section class="add-task">
+      <h3>Add a Task</h3>
+      <input type="text" id="taskName" placeholder="Task name..."/>
+      <select id="daySelect">
+        <option>Monday</option>
+        <option>Tuesday</option>
+        <option>Wednesday</option>
+        <option>Thursday</option>
+        <option>Friday</option>
+        <option>Saturday</option>
+        <option>Sunday</option>
+      </select>
+      <button onclick="addTask()">Add Task</button>
+    </section>
+
+    <table id="timetable"></table>
+
+    <canvas id="lineChart" width="600" height="300"></canvas>
+    <canvas id="pieChart" width="600" height="300"></canvas>
+  </main>
+
+  <script>
+    let timetableData = {};
+    let completedLog = [];
+
+    const days = ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'];
+
+    function generateTimetable() {
+      const start = document.getElementById('startTime').value;
+      const end = document.getElementById('endTime').value;
+      const table = document.getElementById('timetable');
+      table.innerHTML = '';
+      const headerRow = document.createElement('tr');
+      headerRow.innerHTML = '<th>Time</th>' + days.map(d=>`<th>${d}</th>`).join('');
+      table.appendChild(headerRow);
+      
+      timetableData = {};
+      const startHour = parseInt(start.split(':')[0]);
+      const endHour = parseInt(end.split(':')[0]);
+      for (let h=startHour; h<endHour; h++) {
+        const row = document.createElement('tr');
+        const timeLabel = `${String(h).padStart(2,'0')}:00 - ${String(h+1).padStart(2,'0')}:00`;
+        row.innerHTML = `<td>${timeLabel}</td>` + days.map(d=>`<td id="${d}-${h}"></td>`).join('');
+        table.appendChild(row);
+      }
+    }
+
+    function addTask() {
+      const task = document.getElementById('taskName').value.trim();
+      const day = document.getElementById('daySelect').value;
+      if (!task) return alert('Enter a task name');
+      const cells = document.querySelectorAll(`[id^='${day}-']`);
+      if (cells.length === 0) return alert('Generate timetable first');
+      const targetCell = cells[0]; // for simplicity place in first available slot
+      const taskEl = document.createElement('div');
+      taskEl.innerHTML = `<input type='checkbox' onchange='markDone(this,\'${day}\',\'${task}\')'/> ${task}`;
+      targetCell.appendChild(taskEl);
+      timetableData[day] = timetableData[day] || [];
+      timetableData[day].push(task);
+      saveData();
+    }
+
+    function markDone(checkbox, day, task) {
+      if (checkbox.checked) {
+        checkbox.parentElement.classList.add('done');
+        const date = new Date().toISOString().split('T')[0];
+        completedLog.push({date, task});
+      } else {
+        checkbox.parentElement.classList.remove('done');
+      }
+      saveData();
+      updateCharts();
+    }
+
+    function loadPythonSchedule() {
+      const exampleTasks = ['Python Basics','Control Flow','Data Structures','OOP in Python','Modules','AI Intro','Machine Learning'];
+      generateTimetable();
+      days.forEach(day => {
+        const cells = document.querySelectorAll(`[id^='${day}-']`);
+        if (cells.length > 0) {
+          const task = exampleTasks[Math.floor(Math.random()*exampleTasks.length)];
+          const taskEl = document.createElement('div');
+          taskEl.innerHTML = `<input type='checkbox' onchange='markDone(this,\'${day}\',\'${task}\')'/> ${task}`;
+          cells[0].appendChild(taskEl);
+        }
+      });
+      saveData();
+    }
+
+    function saveData() {
+      localStorage.setItem('timetableData', JSON.stringify(timetableData));
+      localStorage.setItem('completedLog', JSON.stringify(completedLog));
+    }
+
+    function loadData() {
+      const tData = JSON.parse(localStorage.getItem('timetableData')) || {};
+      const cLog = JSON.parse(localStorage.getItem('completedLog')) || [];
+      timetableData = tData;
+      completedLog = cLog;
+    }
+
+    function updateCharts() {
+      const dailyCount = {};
+      completedLog.forEach(entry => {
+        dailyCount[entry.date] = (dailyCount[entry.date]||0) + 1;
+      });
+      const dates = Object.keys(dailyCount);
+      const counts = Object.values(dailyCount);
+
+      const lineCtx = document.getElementById('lineChart').getContext('2d');
+      new Chart(lineCtx, {
+        type: 'line',
+        data: { labels: dates, datasets: [{ label: 'Tasks Completed', data: counts }] },
+        options: { responsive: true }
+      });
+
+      const taskFreq = {};
+      completedLog.forEach(e => { taskFreq[e.task] = (taskFreq[e.task]||0)+1; });
+      const pCtx = document.getElementById('pieChart').getContext('2d');
+      new Chart(pCtx, {
+        type: 'pie',
+        data: { labels: Object.keys(taskFreq), datasets: [{ data: Object.values(taskFreq) }] },
+        options: { responsive: true }
+      });
+    }
+
+    window.onload = () => {
+      loadData();
+      generateTimetable();
+      updateCharts();
+    };
+  </script>
+</body>
+</html>
